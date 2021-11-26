@@ -299,9 +299,9 @@ func RunServer(
 
 		var listener net.Listener
 		listener = tcpKeepAliveListener{ln}
-		if server.TLSConfig != nil {
-			listener = tls.NewListener(listener, server.TLSConfig)
-		}
+		//if server.TLSConfig != nil {
+		//	listener = tls.NewListener(listener, server.TLSConfig)
+		//}
 
 		err := server.Serve(listener)
 

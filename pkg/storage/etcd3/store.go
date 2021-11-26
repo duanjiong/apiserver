@@ -767,6 +767,13 @@ func (s *store) List(ctx context.Context, key string, opts storage.ListOptions, 
 			if paging && int64(v.Len()) >= pred.Limit {
 				hasMore = true
 				break
+			} else {
+				if pred.Num > 0 && int64(v.Len()) >= pred.Num {
+					break
+				}
+				if pred.Offset > 0 && int64(i) < pred.Offset {
+					continue
+				}
 			}
 			lastKey = kv.Key
 

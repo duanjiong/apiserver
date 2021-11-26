@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
@@ -39,18 +38,11 @@ import (
 type RecommendedOptions struct {
 	Etcd           *EtcdOptions
 	SecureServing  *SecureServingOptionsWithLoopback
-	Authentication *DelegatingAuthenticationOptions
-	Authorization  *DelegatingAuthorizationOptions
 	Audit          *AuditOptions
 	Features       *FeatureOptions
-	CoreAPI        *CoreAPIOptions
 
 	// FeatureGate is a way to plumb feature gate through if you have them.
 	FeatureGate featuregate.FeatureGate
-	// ExtraAdmissionInitializers is called once after all ApplyTo from the options above, to pass the returned
-	// admission plugin initializers to Admission.ApplyTo.
-	ExtraAdmissionInitializers func(c *server.RecommendedConfig) ([]admission.PluginInitializer, error)
-	Admission                  *AdmissionOptions
 	// API Server Egress Selector is used to control outbound traffic from the API Server
 	EgressSelector *EgressSelectorOptions
 	// Traces contains options to control distributed request tracing.
@@ -69,17 +61,12 @@ func NewRecommendedOptions(prefix string, codec runtime.Codec) *RecommendedOptio
 	return &RecommendedOptions{
 		Etcd:           NewEtcdOptions(storagebackend.NewDefaultConfig(prefix, codec)),
 		SecureServing:  sso.WithLoopback(),
-		Authentication: NewDelegatingAuthenticationOptions(),
-		Authorization:  NewDelegatingAuthorizationOptions(),
 		Audit:          NewAuditOptions(),
 		Features:       NewFeatureOptions(),
-		CoreAPI:        NewCoreAPIOptions(),
 		// Wired a global by default that sadly people will abuse to have different meanings in different repos.
 		// Please consider creating your own FeatureGate so you can have a consistent meaning for what a variable contains
 		// across different repos.  Future you will thank you.
 		FeatureGate:                feature.DefaultFeatureGate,
-		ExtraAdmissionInitializers: func(c *server.RecommendedConfig) ([]admission.PluginInitializer, error) { return nil, nil },
-		Admission:                  NewAdmissionOptions(),
 		EgressSelector:             NewEgressSelectorOptions(),
 		Traces:                     NewTracingOptions(),
 	}
@@ -88,12 +75,8 @@ func NewRecommendedOptions(prefix string, codec runtime.Codec) *RecommendedOptio
 func (o *RecommendedOptions) AddFlags(fs *pflag.FlagSet) {
 	o.Etcd.AddFlags(fs)
 	o.SecureServing.AddFlags(fs)
-	o.Authentication.AddFlags(fs)
-	o.Authorization.AddFlags(fs)
 	o.Audit.AddFlags(fs)
 	o.Features.AddFlags(fs)
-	o.CoreAPI.AddFlags(fs)
-	o.Admission.AddFlags(fs)
 	o.EgressSelector.AddFlags(fs)
 	o.Traces.AddFlags(fs)
 }
@@ -115,26 +98,13 @@ func (o *RecommendedOptions) ApplyTo(config *server.RecommendedConfig) error {
 	if err := o.SecureServing.ApplyTo(&config.Config.SecureServing, &config.Config.LoopbackClientConfig); err != nil {
 		return err
 	}
-	if err := o.Authentication.ApplyTo(&config.Config.Authentication, config.SecureServing, config.OpenAPIConfig); err != nil {
-		return err
-	}
-	if err := o.Authorization.ApplyTo(&config.Config.Authorization); err != nil {
-		return err
-	}
 	if err := o.Audit.ApplyTo(&config.Config); err != nil {
 		return err
 	}
 	if err := o.Features.ApplyTo(&config.Config); err != nil {
 		return err
 	}
-	if err := o.CoreAPI.ApplyTo(config); err != nil {
-		return err
-	}
-	if initializers, err := o.ExtraAdmissionInitializers(config); err != nil {
-		return err
-	} else if err := o.Admission.ApplyTo(&config.Config, config.SharedInformerFactory, config.ClientConfig, o.FeatureGate, initializers...); err != nil {
-		return err
-	}
+	
 	if feature.DefaultFeatureGate.Enabled(features.APIPriorityAndFairness) {
 		if config.ClientConfig != nil {
 			if config.MaxRequestsInFlight+config.MaxMutatingRequestsInFlight <= 0 {
@@ -158,12 +128,8 @@ func (o *RecommendedOptions) Validate() []error {
 	errors := []error{}
 	errors = append(errors, o.Etcd.Validate()...)
 	errors = append(errors, o.SecureServing.Validate()...)
-	errors = append(errors, o.Authentication.Validate()...)
-	errors = append(errors, o.Authorization.Validate()...)
 	errors = append(errors, o.Audit.Validate()...)
 	errors = append(errors, o.Features.Validate()...)
-	errors = append(errors, o.CoreAPI.Validate()...)
-	errors = append(errors, o.Admission.Validate()...)
 	errors = append(errors, o.EgressSelector.Validate()...)
 	errors = append(errors, o.Traces.Validate()...)
 

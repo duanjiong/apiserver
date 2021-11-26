@@ -341,6 +341,8 @@ func (e *Store) ListPredicate(ctx context.Context, p storage.SelectionPredicate,
 	}
 	p.Limit = options.Limit
 	p.Continue = options.Continue
+	p.Num = options.Num
+	p.Offset = options.Offset
 	list := e.NewListFunc()
 	qualifiedResource := e.qualifiedResourceFromContext(ctx)
 	storageOpts := storage.ListOptions{ResourceVersion: options.ResourceVersion, ResourceVersionMatch: options.ResourceVersionMatch, Predicate: p}

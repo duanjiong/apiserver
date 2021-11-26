@@ -1123,6 +1123,8 @@ func (lw *cacherListerWatcher) List(options metav1.ListOptions) (runtime.Object,
 		Field:    fields.Everything(),
 		Limit:    options.Limit,
 		Continue: options.Continue,
+		Num:      options.Num,
+		Offset:   options.Offset,
 	}
 
 	if err := lw.storage.List(context.TODO(), lw.resourcePrefix, storage.ListOptions{ResourceVersionMatch: options.ResourceVersionMatch, Predicate: pred}, list); err != nil {
