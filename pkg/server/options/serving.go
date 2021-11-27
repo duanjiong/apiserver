@@ -40,7 +40,8 @@ import (
 type SecureServingOptions struct {
 	BindAddress net.IP
 	// BindPort is ignored when Listener is set, will serve https even with 0.
-	BindPort int
+	BindPort         int
+	InsecureBindPort int
 	// BindNetwork is the type of network to bind to - defaults to "tcp", accepts "tcp",
 	// "tcp4", and "tcp6".
 	BindNetwork string
@@ -154,7 +155,6 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 		"The IP address on which to listen for the --secure-port port. The "+
 		"associated interface(s) must be reachable by the rest of the cluster, and by CLI/web "+
 		"clients. If blank or an unspecified address (0.0.0.0 or ::), all interfaces will be used.")
-
 	desc := "The port on which to serve HTTPS with authentication and authorization."
 	if s.Required {
 		desc += " It cannot be switched off with 0."
@@ -162,6 +162,7 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 		desc += " If 0, don't serve HTTPS at all."
 	}
 	fs.IntVar(&s.BindPort, "secure-port", s.BindPort, desc)
+	fs.IntVar(&s.InsecureBindPort, "insecure-port", s.InsecureBindPort, "The port on which to serve HTTP")
 
 	fs.StringVar(&s.ServerCert.CertDirectory, "cert-dir", s.ServerCert.CertDirectory, ""+
 		"The directory where the TLS certs are located. "+
@@ -217,8 +218,13 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 
 // ApplyTo fills up serving information in the server configuration.
 func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error {
+	var insecure bool
 	if s == nil {
 		return nil
+	}
+	if s.InsecureBindPort > 0 {
+		s.BindPort = s.InsecureBindPort
+		insecure = true
 	}
 	if s.BindPort <= 0 && s.Listener == nil {
 		return nil
@@ -254,6 +260,7 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 	}
 
 	*config = &server.SecureServingInfo{
+		Insecure:                     insecure,
 		Listener:                     s.Listener,
 		HTTP2MaxStreamsPerConnection: s.HTTP2MaxStreamsPerConnection,
 	}

@@ -264,6 +264,9 @@ func (s *SecureServingInfo) ServeWithListenerStopped(handler http.Handler, shutd
 	secureServer.ErrorLog = tlsErrorLogger
 
 	klog.Infof("Serving securely on %s", secureServer.Addr)
+	if s.Insecure {
+		secureServer.TLSConfig = nil
+	}
 	return RunServer(secureServer, s.Listener, shutdownTimeout, stopCh)
 }
 
@@ -299,9 +302,9 @@ func RunServer(
 
 		var listener net.Listener
 		listener = tcpKeepAliveListener{ln}
-		//if server.TLSConfig != nil {
-		//	listener = tls.NewListener(listener, server.TLSConfig)
-		//}
+		if server.TLSConfig != nil {
+			listener = tls.NewListener(listener, server.TLSConfig)
+		}
 
 		err := server.Serve(listener)
 

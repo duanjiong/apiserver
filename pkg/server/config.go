@@ -274,6 +274,8 @@ type RecommendedConfig struct {
 }
 
 type SecureServingInfo struct {
+	Insecure bool
+
 	// Listener is the secure server network listener.
 	Listener net.Listener
 

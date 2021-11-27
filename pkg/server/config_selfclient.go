@@ -38,6 +38,13 @@ func (s *SecureServingInfo) NewClientConfig(caCert []byte) (*restclient.Config, 
 		return nil, err
 	}
 
+	if s.Insecure {
+		return &restclient.Config{
+			// Do not limit loopback client QPS.
+			QPS:  -1,
+			Host: "http://" + net.JoinHostPort(host, port),
+		}, nil
+	}
 	return &restclient.Config{
 		// Do not limit loopback client QPS.
 		QPS:  -1,
@@ -52,6 +59,9 @@ func (s *SecureServingInfo) NewLoopbackClientConfig(token string, loopbackCert [
 	c, err := s.NewClientConfig(loopbackCert)
 	if err != nil || c == nil {
 		return c, err
+	}
+	if s.Insecure {
+		return c, nil
 	}
 
 	c.BearerToken = token
